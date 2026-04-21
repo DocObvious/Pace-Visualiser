@@ -39,8 +39,6 @@ st.sidebar.title("App Dashboard")
 
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
     unit = st.radio("Distance Unit", ["Miles", "Kilometers"])
-    y_min = st.slider("Graph Floor (Slowest)", 4.0, 15.0, 12.0)
-    y_max = st.slider("Graph Ceiling (Fastest)", 2.0, 12.0, 5.0)
 
 with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
     block_pace = st.text_input("Pace to Apply", value="8:00" if unit == "Miles" else "5:00")
@@ -57,6 +55,10 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=False):
     theme_choice = st.selectbox("Base Theme", ["Dark Mode", "Light Mode"])
+    # New Slider parameters
+    y_min = st.slider("Graph Floor (Slowest)", 4.0, 15.0, 10.0)
+    y_max = st.slider("Graph Ceiling (Fastest)", 4.0, 15.0, 6.0)
+    st.divider()
     bar_color = st.color_picker("Split Bar Color", "#3498db")
     line_color = st.color_picker("Average Line Color", "#ff7f50")
     target_color = st.color_picker("Target Line Color", "#ffffff")
@@ -69,15 +71,13 @@ if 'paces' not in st.session_state or st.session_state.get('last_unit') != unit:
     st.session_state.paces = ["8:00" if unit == "Miles" else "5:00"] * num_units
     st.session_state.last_unit = unit
 
-# --- Data Entry Grid (Simplified for Mobile) ---
+# --- Data Entry Grid ---
 with st.expander(f"Individual {unit} Splits", expanded=True):
-    # We use more columns on desktop (6 or 8) because labels are now very slim
     grid_cols = 6 if unit == "Kilometers" else 4
     cols = st.columns(grid_cols)
     
     for i in range(num_units):
         with cols[i % grid_cols]:
-            # Clean horizontal layout: [Label] [Input]
             c_lab, c_inp = st.columns([1, 3])
             c_lab.markdown(f'<div class="mile-label">{i+1}</div>', unsafe_allow_html=True)
             st.session_state.paces[i] = c_inp.text_input(
@@ -131,7 +131,9 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.grid(axis='y', color=grid_color, linestyle='--', alpha=0.4)
-    ax.set_ylim(y_min, y_max)
+    
+    # Range check to prevent matplotlib errors if user sets max < min
+    ax.set_ylim(max(y_min, y_max + 0.1), min(y_max, y_min - 0.1))
     
     ax.set_title(f"PACE VISUALISER: PERFORMANCE REPORT ({unit.upper()})", 
                  fontsize=14, fontweight='bold', color=text_color, pad=25)
