@@ -117,7 +117,7 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     
     try:
         f_val, c_val = float(y_floor), float(y_ceiling)
-        ax.set_ylim(max(f_val, c_val), min(f_val, c_val)) # Corrected orientation
+        ax.set_ylim(min(f_val, c_val), max(f_val, c_val)) # Corrected orientation
     except:
         ax.set_ylim(10, 6) # Fallback if user types non-numeric characters
 
