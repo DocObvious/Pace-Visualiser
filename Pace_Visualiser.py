@@ -22,7 +22,6 @@ st.set_page_config(page_title="Pace Visualiser", page_icon="🏃", layout="wide"
 st.markdown("""
     <style>
     .stTextInput>div>div>input { font-family: 'Courier New', monospace; font-weight: bold; }
-    .mile-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -48,10 +47,11 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=True):
     theme = st.selectbox("Theme", ["Dark Mode", "Light Mode"])
-    # Changed to text input for precision
     y_floor = st.text_input("Graph Floor (Slowest)", value="10.0")
     y_ceiling = st.text_input("Graph Ceiling (Fastest)", value="6.0")
     bar_color = st.color_picker("Bar Color", "#3498db")
+    line_color = st.color_picker("Avg Pace Line Color", "#ff7f50")
+    target_color = st.color_picker("Target Line Color", "#ffffff")
 
 # --- Logic ---
 num_units = 26 if unit == "Miles" else 42
@@ -62,7 +62,6 @@ if 'paces' not in st.session_state or st.session_state.get('last_unit') != unit:
 # --- Data Entry (Vertical for Mobile Consistency) ---
 with st.expander(f"Individual {unit} Splits", expanded=True):
     for i in range(num_units):
-        # Forced vertical order for mobile
         row = st.columns([1, 4])
         row[0].write(f"**{i+1}**")
         st.session_state.paces[i] = row[1].text_input(
@@ -70,20 +69,25 @@ with st.expander(f"Individual {unit} Splits", expanded=True):
             key=f"input_{i}", label_visibility="collapsed"
         )
 
-# --- Report ---
+# --- Report Generation ---
 if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=True):
     paces_secs = [pace_to_seconds(p) for p in st.session_state.paces]
     paces_mins = [p / 60.0 for p in paces_secs]
+    running_avgs = [sum(paces_mins[:i])/i for i in range(1, num_units + 1)]
+    total_avg = sum(paces_mins) / num_units
     
-    # Correct Axis Order (Small to Large)
+    # Aesthetics logic
+    plt.style.use('dark_background' if theme == "Dark Mode" else 'default')
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    # Plotting everything
+    ax.bar(range(1, num_units+1), paces_mins, color=bar_color, alpha=0.5, label='Split Pace')
+    ax.plot(range(1, num_units+1), running_avgs, color=line_color, marker='o', linewidth=2.5, label='Rolling Avg')
+    ax.axhline(y=total_avg, color=target_color, linestyle='--', label='Target Avg')
+    
+    # Y-Axis range safety
     f_val, c_val = float(y_floor), float(y_ceiling)
-    min_y = min(f_val, c_val)
-    max_y = max(f_val, c_val)
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.bar(range(1, num_units+1), paces_mins, color=bar_color)
+    ax.set_ylim(min(f_val, c_val), max(f_val, c_val))
     
-    # Standard orientation: bottom to top
-    ax.set_ylim(min_y, max_y) 
-    
+    ax.legend()
     st.pyplot(fig)
