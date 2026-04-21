@@ -48,8 +48,8 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=True):
     theme = st.selectbox("Theme", ["Dark Mode", "Light Mode"])
-    y_floor = st.text_input("Graph Floor (Slowest)", value="10.0")
-    y_ceiling = st.text_input("Graph Ceiling (Fastest)", value="6.0")
+    y_floor = st.text_input("Y axis bottom", value="6.0")
+    y_ceiling = st.text_input("Y axis top", value="10")
     st.divider()
     bar_color = st.color_picker("Bar Color", "#3498db")
     line_color = st.color_picker("Rolling Avg Color", "#ff7f50")
