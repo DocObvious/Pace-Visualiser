@@ -32,13 +32,13 @@ st.markdown("""
 
 # --- Header ---
 st.title("🏃 Pace Visualiser")
-st.markdown('<div class="intro-text">Analyze your marathon splits with precision.</div>', unsafe_allow_html=True)
+st.markdown('<div class="intro-text">Analyze your marathon splits with precision. Use the bulk entry tool to save time!</div>', unsafe_allow_html=True)
 
 # --- Sidebar ---
 st.sidebar.title("App Dashboard")
 
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
-    unit = st.radio("Distance Unit", ["Miles", "Kilometers"])
+    unit = st.sidebar.radio("Distance Unit", ["Miles", "Kilometers"])
 
 with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
     block_pace = st.text_input("Pace to Apply", value="8:00" if unit == "Miles" else "5:00")
@@ -50,12 +50,14 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
         num_units = 26 if unit == "Miles" else 42
         for i in range(int(start_range)-1, int(end_range)):
             if i < num_units:
+                # Update the source data
                 st.session_state.paces[i] = block_pace
+                # UPDATE THE WIDGET KEYS DIRECTLY (Fixes the Button Issue)
+                st.session_state[f"input_{i}"] = block_pace
         st.rerun()
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=False):
     theme_choice = st.selectbox("Base Theme", ["Dark Mode", "Light Mode"])
-    # New Slider parameters
     y_min = st.slider("Graph Floor (Slowest)", 4.0, 15.0, 10.0)
     y_max = st.slider("Graph Ceiling (Fastest)", 4.0, 15.0, 6.0)
     st.divider()
@@ -80,6 +82,8 @@ with st.expander(f"Individual {unit} Splits", expanded=True):
         with cols[i % grid_cols]:
             c_lab, c_inp = st.columns([1, 3])
             c_lab.markdown(f'<div class="mile-label">{i+1}</div>', unsafe_allow_html=True)
+            
+            # This is bound to the keys updated in the sidebar
             st.session_state.paces[i] = c_inp.text_input(
                 label=f"split_{i}", 
                 value=st.session_state.paces[i], 
@@ -89,6 +93,7 @@ with st.expander(f"Individual {unit} Splits", expanded=True):
 
 # --- Analysis & Generation ---
 if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=True):
+    # Capture fresh paces
     paces_secs = [pace_to_seconds(p) for p in st.session_state.paces]
     unit_range = list(range(1, num_units + 1))
     paces_mins = [p / 60.0 for p in paces_secs]
@@ -96,6 +101,7 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     
     total_avg_secs = sum(paces_secs) / num_units
     
+    # Corrected KM math (21.1km half)
     if unit == "Kilometers":
         first_half_secs = sum(paces_secs[:21]) + (paces_secs[21] * 0.1)
     else:
@@ -125,6 +131,7 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
             linewidth=2.5, label='Running Average')
     ax.axhline(y=total_avg_secs/60.0, color=target_color, linestyle='--', alpha=0.5, label='Target Avg')
     
+    # Tick Logic
     ax.set_xticks(unit_range)
     ax.set_xticklabels(unit_range, fontsize=8 if unit == "Kilometers" else 10)
 
@@ -132,12 +139,13 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     ax.spines['right'].set_visible(False)
     ax.grid(axis='y', color=grid_color, linestyle='--', alpha=0.4)
     
-    # Range check to prevent matplotlib errors if user sets max < min
-    ax.set_ylim(max(y_min, y_max + 0.1), min(y_max, y_min - 0.1))
+    # Invert the logic so Slowest (Floor) is at the bottom and Fastest (Ceiling) is at top
+    ax.set_ylim(max(y_min, y_max), min(y_min, y_max))
     
     ax.set_title(f"PACE VISUALISER: PERFORMANCE REPORT ({unit.upper()})", 
                  fontsize=14, fontweight='bold', color=text_color, pad=25)
     
+    # Overlay Statistics
     stats_box = (f"RESULT: {fmt_time(full_total_secs)}\n"
                  f"AVG: {fmt_time(total_avg_secs)}/{unit[:2].lower()}\n"
                  f"1ST HALF: {fmt_time(first_half_secs)}\n"
