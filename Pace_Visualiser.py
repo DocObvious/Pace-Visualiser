@@ -58,8 +58,8 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=False):
     theme_choice = st.selectbox("Base Theme", ["Dark Mode", "Light Mode"])
-    y_min = st.slider("Graph Floor (Slowest)", 4.0, 15.0, 10.0)
-    y_max = st.slider("Graph Ceiling (Fastest)", 4.0, 15.0, 6.0)
+    y_min = st.text_input("Y axis low", 5.0)
+    y_max = st.text_input("Y axis high", 12.0)
     st.divider()
     bar_color = st.color_picker("Split Bar Color", "#3498db")
     line_color = st.color_picker("Average Line Color", "#ff7f50")
