@@ -140,7 +140,7 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     ax.grid(axis='y', color=grid_color, linestyle='--', alpha=0.4)
     
     # Invert the logic so Slowest (Floor) is at the bottom and Fastest (Ceiling) is at top
-    ax.set_ylim(max(y_min, y_max), min(y_min, y_max))
+    ax.set_ylim(min(y_min, y_max), max(y_min, y_max))
     
     ax.set_title(f"PACE VISUALISER: PERFORMANCE REPORT ({unit.upper()})", 
                  fontsize=14, fontweight='bold', color=text_color, pad=25)
