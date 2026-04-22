@@ -27,13 +27,12 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("🏃 Pace Visualiser")
-st.markdown('<div class="intro-text">Analyze your marathon splits with precision. Use the bulk entry tool to save time!  Use this tool to visualise predicted marathon splits by mile or km. Ideal to allow you to visualise a strong pacing strategy or to model a route with hills at particular miles/km</div>', unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
     unit = st.radio("Distance Unit", ["Miles", "Kilometers"])
 
-# Fixes the switch glitch between Miles and KM
+# Corrects the Miles/KM switch instantly
 num_units = 26 if unit == "Miles" else 42
 if 'paces' not in st.session_state or len(st.session_state.paces) != num_units:
     default_p = "8:00" if unit == "Miles" else "5:00"
@@ -57,15 +56,18 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=True):
     theme = st.selectbox("Theme", ["Dark Mode", "Light Mode"])
-    # Adjusted labels to reflect your preference
-    y_min = st.text_input("Graph Baseline (Fastest)", value="4.0")
-    y_max = st.text_input("Graph Peak (Slowest)", value="12.0")
+    # The Toggle for Inversion
+    invert_y = st.toggle("Invert Axis (Faster = Higher Bars)", value=False)
+    
+    y_floor = st.text_input("Graph Floor (Value at Bottom)", value="12.0" if not invert_y else "12.0")
+    y_ceiling = st.text_input("Graph Ceiling (Value at Top)", value="4.0" if not invert_y else "4.0")
+    
     st.divider()
     bar_color = st.color_picker("Bar Color", "#3498db")
     line_color = st.color_picker("Rolling Avg Color", "#ff7f50")
     target_color = st.color_picker("Target Line Color", "#ffffff")
 
-# --- Data Entry Grid ---
+# --- Data Entry Grid (Vertical for Mobile Consistency) ---
 with st.expander(f"Individual {unit} Splits", expanded=True):
     for i in range(num_units):
         row = st.columns([1, 5])
@@ -110,25 +112,31 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
 
     unit_range = range(1, num_units + 1)
     ax.bar(unit_range, paces_mins, color=bar_color, alpha=0.4, label='Split Pace')
-    ax.plot(unit_range, running_avgs, color=line_color, marker='o', linewidth=2, label='Rolling Avg pace')
-    ax.axhline(y=total_avg_secs/60.0, color=target_color, linestyle='--', alpha=0.6, label='Avg pace')
+    ax.plot(unit_range, running_avgs, color=line_color, marker='o', linewidth=2, label='Rolling Avg')
+    ax.axhline(y=total_avg_secs/60.0, color=target_color, linestyle='--', alpha=0.6, label='Target Avg')
     
     ax.set_xticks(unit_range)
     ax.set_xticklabels(unit_range, fontsize=8 if unit == "Kilometers" else 10)
     
-    # Standard orientation: Smallest number at bottom, Largest at top
-    # This means the "slowest" (highest number) creates the biggest bars
+    # --- The Toggle Logic ---
     try:
-        val_min, val_max = float(y_min), float(y_max)
-        ax.set_ylim(min(val_min, val_max), max(val_min, val_max))
+        val_floor = float(y_floor)
+        val_ceiling = float(y_ceiling)
+        
+        if invert_y:
+            # Faster (smaller number) at top, Slower (larger number) at bottom
+            ax.set_ylim(max(val_floor, val_ceiling), min(val_floor, val_ceiling))
+        else:
+            # Standard: Smaller number at bottom, Larger number at top
+            ax.set_ylim(min(val_floor, val_ceiling), max(val_floor, val_ceiling))
     except:
-        ax.set_ylim(4.0, 12.0)
+        ax.set_ylim(12.0, 4.0) if invert_y else ax.set_ylim(4.0, 12.0)
 
     ax.set_title(f"PACE VISUALISER ({unit.upper()})", fontsize=14, fontweight='bold', pad=20)
     ax.legend(loc='upper right')
 
     stats_text = (f"RESULT: {fmt_time(full_total_secs)}\n"
-                  f"AVG pace: {fmt_time(total_avg_secs)}/{unit[:2].lower()}\n"
+                  f"AVG: {fmt_time(total_avg_secs)}/{unit[:2].lower()}\n"
                   f"1ST HALF: {fmt_time(first_half_secs)}\n"
                   f"2ND HALF: {fmt_time(second_half_secs)}")
     
@@ -141,4 +149,4 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=300, bbox_inches='tight')
     st.download_button("💾 Download High-Res Image", buf.getvalue(), "pace_report.png", "image/png")
-        
+    
