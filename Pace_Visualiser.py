@@ -27,6 +27,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("🏃 Pace Visualiser")
+st.markdown('<div class="intro-text">Analyze your marathon splits with precision. Use the bulk entry tool to save time!</div>', unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
