@@ -28,6 +28,7 @@ st.markdown("""
 
 st.title("🏃 Pace Visualiser")
 st.markdown('<div class="intro-text">Analyze your marathon splits with precision. Use the bulk entry tool to save time!</div>', unsafe_allow_html=True)
+st.markdown('<div class="intro-text">Use this tool to visualise predictedarathon splits by mile. Ideal to allow you to visualise a strong pacing strategy or to model a route with hill at particular miles/km</div>', unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
