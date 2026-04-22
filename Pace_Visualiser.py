@@ -110,8 +110,8 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
 
     unit_range = range(1, num_units + 1)
     ax.bar(unit_range, paces_mins, color=bar_color, alpha=0.4, label='Split Pace')
-    ax.plot(unit_range, running_avgs, color=line_color, marker='o', linewidth=2, label='Rolling Avg')
-    ax.axhline(y=total_avg_secs/60.0, color=target_color, linestyle='--', alpha=0.6, label='Target Avg')
+    ax.plot(unit_range, running_avgs, color=line_color, marker='o', linewidth=2, label='Rolling Avg pace')
+    ax.axhline(y=total_avg_secs/60.0, color=target_color, linestyle='--', alpha=0.6, label='Avg pace')
     
     ax.set_xticks(unit_range)
     ax.set_xticklabels(unit_range, fontsize=8 if unit == "Kilometers" else 10)
@@ -128,7 +128,7 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     ax.legend(loc='upper right')
 
     stats_text = (f"RESULT: {fmt_time(full_total_secs)}\n"
-                  f"AVG: {fmt_time(total_avg_secs)}/{unit[:2].lower()}\n"
+                  f"AVG pace: {fmt_time(total_avg_secs)}/{unit[:2].lower()}\n"
                   f"1ST HALF: {fmt_time(first_half_secs)}\n"
                   f"2ND HALF: {fmt_time(second_half_secs)}")
     
