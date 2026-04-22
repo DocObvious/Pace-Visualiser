@@ -19,6 +19,7 @@ def pace_to_seconds(ts):
 
 st.set_page_config(page_title="Pace Visualiser", page_icon="🏃", layout="wide")
 
+# CSS for better UI
 st.markdown("""
     <style>
     .stTextInput>div>div>input { font-family: 'Courier New', monospace; font-weight: bold; }
@@ -32,7 +33,7 @@ st.title("🏃 Pace Visualiser")
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
     unit = st.radio("Distance Unit", ["Miles", "Kilometers"])
 
-# Corrects the Miles/KM switch instantly
+# Fix the KM/Miles switch glitch
 num_units = 26 if unit == "Miles" else 42
 if 'paces' not in st.session_state or len(st.session_state.paces) != num_units:
     default_p = "8:00" if unit == "Miles" else "5:00"
@@ -56,18 +57,19 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=True):
     theme = st.selectbox("Theme", ["Dark Mode", "Light Mode"])
-    # The Toggle for Inversion
-    invert_y = st.toggle("Invert Axis (Faster = Higher Bars)", value=False)
     
-    y_floor = st.text_input("Graph Floor (Value at Bottom)", value="12.0" if not invert_y else "12.0")
-    y_ceiling = st.text_input("Graph Ceiling (Value at Top)", value="4.0" if not invert_y else "4.0")
+    # Checkbox instead of Toggle for better compatibility
+    invert_y = st.checkbox("Invert Y-Axis (Faster = Higher Bars)")
+    
+    y_floor = st.text_input("Graph Bottom Value", value="12.0")
+    y_ceiling = st.text_input("Graph Top Value", value="4.0")
     
     st.divider()
     bar_color = st.color_picker("Bar Color", "#3498db")
     line_color = st.color_picker("Rolling Avg Color", "#ff7f50")
     target_color = st.color_picker("Target Line Color", "#ffffff")
 
-# --- Data Entry Grid (Vertical for Mobile Consistency) ---
+# --- Data Entry Grid ---
 with st.expander(f"Individual {unit} Splits", expanded=True):
     for i in range(num_units):
         row = st.columns([1, 5])
@@ -118,17 +120,16 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     ax.set_xticks(unit_range)
     ax.set_xticklabels(unit_range, fontsize=8 if unit == "Kilometers" else 10)
     
-    # --- The Toggle Logic ---
+    # --- Axis Logic ---
     try:
-        val_floor = float(y_floor)
-        val_ceiling = float(y_ceiling)
-        
+        val_f = float(y_floor)
+        val_c = float(y_ceiling)
         if invert_y:
-            # Faster (smaller number) at top, Slower (larger number) at bottom
-            ax.set_ylim(max(val_floor, val_ceiling), min(val_floor, val_ceiling))
+            # Faster pace (smaller number) is at the top
+            ax.set_ylim(max(val_f, val_c), min(val_f, val_c))
         else:
-            # Standard: Smaller number at bottom, Larger number at top
-            ax.set_ylim(min(val_floor, val_ceiling), max(val_floor, val_ceiling))
+            # Slower pace (larger number) is at the top
+            ax.set_ylim(min(val_f, val_c), max(val_f, val_c))
     except:
         ax.set_ylim(12.0, 4.0) if invert_y else ax.set_ylim(4.0, 12.0)
 
@@ -148,5 +149,5 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=300, bbox_inches='tight')
-    st.download_button("💾 Download High-Res Image", buf.getvalue(), "pace_report.png", "image/png")
+    st.download_button("💾 Download Image", buf.getvalue(), "pace_report.png", "image/png")
     
