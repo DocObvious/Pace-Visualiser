@@ -19,7 +19,6 @@ def pace_to_seconds(ts):
 
 st.set_page_config(page_title="Pace Visualiser", page_icon="🏃", layout="wide")
 
-# CSS for better UI
 st.markdown("""
     <style>
     .stTextInput>div>div>input { font-family: 'Courier New', monospace; font-weight: bold; }
@@ -33,7 +32,6 @@ st.title("🏃 Pace Visualiser")
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
     unit = st.radio("Distance Unit", ["Miles", "Kilometers"])
 
-# Fix the KM/Miles switch glitch
 num_units = 26 if unit == "Miles" else 42
 if 'paces' not in st.session_state or len(st.session_state.paces) != num_units:
     default_p = "8:00" if unit == "Miles" else "5:00"
@@ -57,13 +55,9 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=True):
     theme = st.selectbox("Theme", ["Dark Mode", "Light Mode"])
-    
-    # Checkbox instead of Toggle for better compatibility
     invert_y = st.checkbox("Invert Y-Axis (Faster = Higher Bars)")
-    
     y_floor = st.text_input("Graph Bottom Value", value="12.0")
     y_ceiling = st.text_input("Graph Top Value", value="4.0")
-    
     st.divider()
     bar_color = st.color_picker("Bar Color", "#3498db")
     line_color = st.color_picker("Rolling Avg Color", "#ff7f50")
@@ -75,10 +69,8 @@ with st.expander(f"Individual {unit} Splits", expanded=True):
         row = st.columns([1, 5])
         row[0].markdown(f'<div class="mile-label">{i+1}</div>', unsafe_allow_html=True)
         st.session_state.paces[i] = row[1].text_input(
-            label=f"split_{i}", 
-            value=st.session_state.paces[i], 
-            key=f"input_{i}", 
-            label_visibility="collapsed"
+            label=f"split_{i}", value=st.session_state.paces[i], 
+            key=f"input_{i}", label_visibility="collapsed"
         )
 
 # --- Analysis & Generation ---
@@ -112,27 +104,31 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     fig, ax = plt.subplots(figsize=(14, 7), facecolor=bg_color)
     ax.set_facecolor(bg_color)
 
-    unit_range = range(1, num_units + 1)
-    ax.bar(unit_range, paces_mins, color=bar_color, alpha=0.4, label='Split Pace')
+    unit_range = list(range(1, num_units + 1))
+    
+    # --- FIXED BAR LOGIC ---
+    try:
+        val_bottom = float(y_floor)
+        val_top = float(y_ceiling)
+    except:
+        val_bottom, val_top = 12.0, 4.0
+
+    if invert_y:
+        # We calculate the height as (Current Pace - Bottom Value)
+        # and set the 'bottom' of the bar to the Floor value
+        heights = [p - val_bottom for p in paces_mins]
+        ax.bar(unit_range, heights, bottom=val_bottom, color=bar_color, alpha=0.4, label='Split Pace')
+        ax.set_ylim(val_bottom, val_top)
+    else:
+        # Standard bars growing from 0 or the specified min
+        ax.bar(unit_range, paces_mins, color=bar_color, alpha=0.4, label='Split Pace')
+        ax.set_ylim(min(val_bottom, val_top), max(val_bottom, val_top))
+
     ax.plot(unit_range, running_avgs, color=line_color, marker='o', linewidth=2, label='Rolling Avg')
     ax.axhline(y=total_avg_secs/60.0, color=target_color, linestyle='--', alpha=0.6, label='Target Avg')
     
     ax.set_xticks(unit_range)
     ax.set_xticklabels(unit_range, fontsize=8 if unit == "Kilometers" else 10)
-    
-    # --- Axis Logic ---
-    try:
-        val_f = float(y_floor)
-        val_c = float(y_ceiling)
-        if invert_y:
-            # Faster pace (smaller number) is at the top
-            ax.set_ylim(max(val_f, val_c), min(val_f, val_c))
-        else:
-            # Slower pace (larger number) is at the top
-            ax.set_ylim(min(val_f, val_c), max(val_f, val_c))
-    except:
-        ax.set_ylim(12.0, 4.0) if invert_y else ax.set_ylim(4.0, 12.0)
-
     ax.set_title(f"PACE VISUALISER ({unit.upper()})", fontsize=14, fontweight='bold', pad=20)
     ax.legend(loc='upper right')
 
