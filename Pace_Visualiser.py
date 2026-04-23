@@ -23,17 +23,33 @@ st.markdown("""
     <style>
     .stTextInput>div>div>input { font-family: 'Courier New', monospace; font-weight: bold; }
     .mile-label { font-weight: bold; font-size: 1.1em; color: #666; margin-top: 5px; }
-    .final-label { font-weight: bold; font-size: 1.1em; color: #e74c3c; margin-top: 5px; }
+    .help-text { font-size: 0.9em; color: #7f8c8d; line-height: 1.4; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🏃 Pace Visualiser")
 
 # --- Sidebar ---
+st.sidebar.title("Navigation & Help")
+
+with st.sidebar.expander("📖 How to use this tool", expanded=False):
+    st.markdown("""
+    **1. Choose your units:** Toggle between Miles and Kilometers in Core Settings.
+    
+    **2. Bulk Entry:** Use 'Data Entry Tools' to apply a single pace to a range (e.g., set Mile 1-10 to 8:00). 
+    
+    **3. Fine Tune:** Scroll down to 'Individual Splits' to tweak specific miles. Don't forget the **26.2/42.2** box for your final sprint!
+    
+    **4. Customize:** Use 'Graph Aesthetics' to flip the axis or change colors.
+    
+    **5. Generate:** Hit the big button at the bottom to see your stats.
+    """)
+
 with st.sidebar.expander("🛠️ Core Settings", expanded=True):
+    st.markdown('<div class="help-text">Select your race distance format. Changing this will reset your current split data.</div>', unsafe_allow_html=True)
     unit = st.radio("Distance Unit", ["Miles", "Kilometers"])
 
-# Fix the KM/Miles switch glitch
+# Corrects the Miles/KM switch instantly
 num_units = 26 if unit == "Miles" else 42
 final_label = "26.2" if unit == "Miles" else "42.2"
 
@@ -45,6 +61,7 @@ if 'paces' not in st.session_state or len(st.session_state.paces) != num_units:
             del st.session_state[key]
 
 with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
+    st.markdown('<div class="help-text">Quickly fill multiple splits at once. Perfect for mapping out steady-state blocks.</div>', unsafe_allow_html=True)
     block_pace = st.text_input("Pace to Apply", value="8:00" if unit == "Miles" else "5:00")
     col_s1, col_s2 = st.columns(2)
     start_range = col_s1.number_input("From", min_value=1, value=1)
@@ -55,11 +72,12 @@ with st.sidebar.expander("📝 Data Entry Tools", expanded=True):
             if i < num_units:
                 st.session_state.paces[i] = block_pace
                 st.session_state[f"input_{i}"] = block_pace
-        # Also apply to the final stretch box
         st.session_state.final_split = block_pace
+        st.session_state["input_final"] = block_pace
         st.rerun()
 
 with st.sidebar.expander("🎨 Graph Aesthetics", expanded=True):
+    st.markdown('<div class="help-text">Adjust the visual limits. Setting a tight range (e.g. 7:00 to 9:00) makes small pace changes more visible.</div>', unsafe_allow_html=True)
     theme = st.selectbox("Theme", ["Dark Mode", "Light Mode"])
     invert_y = st.checkbox("Invert Y-Axis (Faster = Higher Bars)")
     y_floor = st.text_input("Graph Bottom Value", value="12.0")
@@ -79,10 +97,9 @@ with st.expander(f"Individual {unit} Splits", expanded=True):
             key=f"input_{i}", label_visibility="collapsed"
         )
     
-    # The New Final Stretch Box
     st.divider()
     frow = st.columns([1, 5])
-    frow[0].markdown(f'<div class="final-label">{final_label}</div>', unsafe_allow_html=True)
+    frow[0].markdown(f'<div class="mile-label">{final_label}</div>', unsafe_allow_html=True)
     st.session_state.final_split = frow[1].text_input(
         label="final_stretch", value=st.session_state.final_split, 
         key="input_final", label_visibility="collapsed"
@@ -92,16 +109,11 @@ with st.expander(f"Individual {unit} Splits", expanded=True):
 if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=True):
     paces_secs = [pace_to_seconds(p) for p in st.session_state.paces]
     final_pace_secs = pace_to_seconds(st.session_state.final_split)
-    
     paces_mins = [p / 60.0 for p in paces_secs]
     final_pace_mins = final_pace_secs / 60.0
     
-    # For graphing: append the final fractional split
-    graph_paces = paces_mins + [final_pace_mins]
-    unit_range = list(range(1, num_units + 1)) + [num_units + 0.5]
-    
     running_avgs = [sum(paces_mins[:i])/i for i in range(1, num_units + 1)]
-    # Final rolling avg includes the weighted final stretch
+    
     total_dist = 26.2 if unit == "Miles" else 42.195
     finish_mult = 0.2 if unit == "Miles" else 0.195
     
@@ -129,6 +141,8 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
     fig, ax = plt.subplots(figsize=(14, 7), facecolor=bg_color)
     ax.set_facecolor(bg_color)
 
+    unit_range = list(range(1, num_units + 1))
+    
     try:
         val_bottom = float(y_floor)
         val_top = float(y_ceiling)
@@ -136,26 +150,23 @@ if st.button("GENERATE PERFORMANCE REPORT", type="primary", use_container_width=
         val_bottom, val_top = 12.0, 4.0
 
     if invert_y:
-        # Plot standard splits
         h_main = [p - val_bottom for p in paces_mins]
-        ax.bar(range(1, num_units + 1), h_main, bottom=val_bottom, color=bar_color, alpha=0.4, label='Splits')
-        # Plot final stretch split (narrower bar)
+        ax.bar(unit_range, h_main, bottom=val_bottom, color=bar_color, alpha=0.4, label='Splits')
+        # Final Split (No longer highlighted, same color)
         h_final = final_pace_mins - val_bottom
-        ax.bar(num_units + 1, h_final, bottom=val_bottom, color='#e74c3c', alpha=0.6, width=0.4, label='Final Stretch')
+        ax.bar(num_units + 1, h_final, bottom=val_bottom, color=bar_color, alpha=0.4)
         ax.set_ylim(val_bottom, val_top)
     else:
-        ax.bar(range(1, num_units + 1), paces_mins, color=bar_color, alpha=0.4, label='Splits')
-        ax.bar(num_units + 1, final_pace_mins, color='#e74c3c', alpha=0.6, width=0.4, label='Final Stretch')
+        ax.bar(unit_range, paces_mins, color=bar_color, alpha=0.4, label='Splits')
+        ax.bar(num_units + 1, paces_mins[-1], color=bar_color, alpha=0.4) # Placeholder for height logic
         ax.set_ylim(min(val_bottom, val_top), max(val_bottom, val_top))
 
-    ax.plot(range(1, num_units+1), running_avgs, color=line_color, marker='o', linewidth=2, label='Rolling Avg')
+    ax.plot(unit_range, running_avgs, color=line_color, marker='o', linewidth=2, label='Rolling Avg')
     ax.axhline(y=total_avg_secs/60.0, color=target_color, linestyle='--', alpha=0.6, label='Target Avg')
     
-    # Axis Labels
-    ax.set_ylabel("Pace (Minutes)", color=text_color, fontsize=12, fontweight='bold')
-    ax.set_xlabel(f"{unit[:-1]} Number", color=text_color, fontsize=12, fontweight='bold')
+    ax.set_ylabel("Pace (Minutes)", fontweight='bold')
+    ax.set_xlabel(f"{unit[:-1]} Number", fontweight='bold')
     
-    # Custom ticks to include the final label
     tick_locs = list(range(1, num_units + 1)) + [num_units + 1]
     tick_labs = list(range(1, num_units + 1)) + [final_label]
     ax.set_xticks(tick_locs)
